@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI TV Learning Center</title>
+  
+  <!-- HLS.js for Livepeer Video Playback -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <!-- Supabase JS Client v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --bg-dark: #0f0c20;
+      --bg-card: rgba(26, 22, 51, 0.75);
+      --primary: #7c3aed;
+      --primary-hover: #6d28d9;
+      --accent: #3b82f6;
+      --text-main: #f3f4f6;
+      --text-sub: #9ca3af;
+      --border: rgba(124, 58, 237, 0.25);
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding-bottom: 60px;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    /* GLASS CONTAINER */
+    .glass {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    /* NAVBAR */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      background: rgba(15, 12, 32, 0.9);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand i { color: var(--primary); }
+
+    .nav-links {
+      display: flex;
+      gap: 1.2rem;
+      list-style: none;
+      align-items: center;
+    }
+
+    .nav-links a, .nav-btn {
+      color: var(--text-main);
+      font-weight: 500;
+      padding: 0.5rem 0.8rem;
+      border-radius: 6px;
+      transition: all 0.3s;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 0.95rem;
+    }
+
+    .nav-links a:hover, .nav-btn:hover {
+      background: rgba(124, 58, 237, 0.2);
+      color: #fff;
+    }
+
+    .btn-admin {
+      border: 1px solid var(--primary) !important;
+      color: #a78bfa !important;
+    }
+
+    /* LAYOUT CONTAINERS */
+    .container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    /* GOOGLE FORM BANNER */
+    .registration-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.3) 0%, rgba(59, 130, 246, 0.3) 100%);
+    }
+
+    .btn-action {
+      background: var(--primary);
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .btn-action:hover {
+      background: var(--primary-hover);
+      transform: translateY(-2px);
+    }
+
+    /* SECTION SEARCH BAR */
+    .search-box {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.3);
+      color: #fff;
+      margin-bottom: 1.5rem;
+      outline: none;
+    }
+
+    /* LIVE CLASS PLAYER */
+    .video-section {
+      margin-bottom: 3rem;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .status-live { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+    .status-offline { background: rgba(156, 163, 175, 0.2); color: var(--text-sub); }
+
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%; /* 16:9 Aspect Ratio */
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    #videoPlayer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .player-controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      margin-top: 0.5rem;
+    }
+
+    .like-dislike-group {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .btn-vote {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* CARDS & GRIDS */
+    .grid-layout {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .card-pinned {
+      border-color: #f59e0b;
+    }
+
+    .pin-badge {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      color: #f59e0b;
+      font-size: 0.9rem;
+    }
+
+    .card-title {
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+
+    .card-meta {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      margin-bottom: 1rem;
+    }
+
+    /* CHAT UI */
+    .chat-container {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      height: 500px;
+      padding: 1rem;
+    }
+
+    .chat-messages {
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding-right: 0.5rem;
+    }
+
+    .chat-bubble {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      position: relative;
+    }
+
+    .chat-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      margin-bottom: 0.25rem;
+    }
+
+    .chat-author { font-weight: 600; color: #a78bfa; }
+
+    .chat-input-area {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .chat-input-area input {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 0.75rem;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    .input-name { width: 30%; }
+    .input-msg { flex: 1; }
+
+    /* MODAL POPUPS */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+    }
+
+    .modal-body {
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 2rem;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-size: 0.9rem;
+    }
+
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: 0.6rem;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      color: #fff;
+      border-radius: 6px;
+    }
+
+    .admin-tab-btns {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+
+    .admin-tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+    }
+
+    .admin-tab-btn.active {
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+    }
+
+    .admin-section-content { display: none; }
+    .admin-section-content.active { display: block; }
+
+    .btn-danger-sm {
+      background: var(--danger);
+      color: white;
+      border: none;
+      padding: 2px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+
+    /* SECTION WRAPPERS */
+    .section-block {
+      margin-bottom: 4rem;
+    }
+
+    .section-title {
+      font-size: 1.6rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .navbar { flex-direction: column; gap: 1rem; }
+      .nav-links { flex-wrap: wrap; justify-content: center; }
+      .registration-banner { flex-direction: column; gap: 1rem; text-align: center; }
+      .chat-input-area { flex-direction: column; }
+      .input-name { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="brand">
+      <i class="fa-solid fa-graduation-cap"></i> AI TV Learning Center
+    </div>
+    <ul class="nav-links">
+      <li><a href="#home">Home</a></li>
+      <li><a href="#announcements">Announcements</a></li>
+      <li><a href="#notes">Notes</a></li>
+      <li><a href="#live">Live Class</a></li>
+      <li><a href="#chat">Student Chat</a></li>
+      <li><a href="#complaints">Complaints</a></li>
+      <li><button class="nav-btn btn-admin" onclick="openAdminAuthModal()">🔐 Admin</button></li>
+    </ul>
+  </nav>
+
+  <div class="container" id="home">
+
+    <!-- FIRST SECTION: GOOGLE FORM REGISTRATION BANNER -->
+    <section class="glass registration-banner">
+      <div>
+        <h2>Join Our Interactive Learning Program</h2>
+        <p style="color: var(--text-sub);">Register now via Google Forms to get access to course updates and live notifications.</p>
+      </div>
+      <a href="https://docs.google.com/forms/d/e/1FAIpQLSf4yTHgF1aNSuNYrwVNLtKBOXGbQlSV8OioHWGjwWHFpm-Ywg/viewform?usp=publish-editor" target="_blank" rel="noopener" class="btn-action">
+        📝 Join / Register
+      </a>
+    </section>
+
+    <!-- GLOBAL SEARCH -->
+    <input type="text" id="globalSearch" class="search-box" placeholder="🔍 Search Announcements, Notes, Subjects, and Chat..." oninput="handleSearch()">
+
+    <!-- LIVE CLASS SECTION -->
+    <section class="section-block video-section" id="live">
+      <div class="section-title">
+        <i class="fa-solid fa-headset" style="color: var(--danger);"></i> Live Interactive Class
+      </div>
+      <div id="statusBadge" class="status-badge status-offline">
+        <i class="fa-solid fa-circle"></i> STREAM OFFLINE
+      </div>
+      
+      <div class="glass" style="padding: 1rem;">
+        <div class="video-wrapper">
+          <video id="videoPlayer" controls></video>
+        </div>
+        <div class="player-controls-bar">
+          <span style="font-size: 0.9rem; color: var(--text-sub);" id="streamMessage">Class stream status initialized.</span>
+          <div class="like-dislike-group">
+            <button class="btn-vote" onclick="handleVote('like')"><i class="fa-regular fa-thumbs-up"></i> <span id="likeCount">0</span></button>
+            <button class="btn-vote" onclick="handleVote('dislike')"><i class="fa-regular fa-thumbs-down"></i> <span id="dislikeCount">0</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANNOUNCEMENTS SECTION -->
+    <section class="section-block" id="announcements">
+      <div class="section-title">
+        <i class="fa-solid fa-bullhorn" style="color: var(--accent);"></i> Announcements
+      </div>
+      <div class="grid-layout" id="announcementsContainer">
+        <!-- Dynamic Insertion -->
+      </div>
+    </section>
+
+    <!-- NOTES SECTION -->
+    <section class="section-block" id="notes">
+      <div class="section-title">
+        <i class="fa-solid fa-book" style="color: #10b981;"></i> Lecture Notes & Material
+      </div>
+      <div class="grid-layout" id="notesContainer">
+        <!-- Dynamic Insertion -->
+      </div>
+    </section>
+
+    <!-- STUDENT CHAT SECTION -->
+    <section class="section-block" id="chat">
+      <div class="section-title">
+        <i class="fa-solid fa-comments" style="color: #a78bfa;"></i> 💬 Student Chat
+      </div>
+      <div class="glass chat-container">
+        <div class="chat-messages" id="chatMessages">
+          <!-- Dynamic Chat -->
+        </div>
+        <div class="chat-input-area">
+          <input type="text" id="chatName" class="input-name" placeholder="Your Name">
+          <input type="text" id="chatMsg" class="input-msg" placeholder="Type your message...">
+          <button class="btn-action" onclick="sendChatMessage()">Send</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPLAINTS / HELP SECTION -->
+    <section class="section-block" id="complaints">
+      <div class="glass" style="padding: 2rem; text-align: center;">
+        <div class="section-title" style="justify-content: center;">
+          <i class="fa-solid fa-paper-plane" style="color: var(--accent);"></i> 📩 Complaints / Help
+        </div>
+        <p style="margin-bottom: 1.5rem; color: var(--text-sub);">For complaints, technical help, or direct questions, reach out on our official channel.</p>
+        <a href="https://t.me/+XiZq3s3NhjAxYzE1" target="_blank" rel="noopener" class="btn-action">
+          Contact on Telegram
+        </a>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ADMIN AUTH MODAL -->
+  <div class="modal-overlay" id="adminAuthModal">
+    <div class="glass modal-body" style="max-width: 400px;">
+      <button class="modal-close" onclick="closeModal('adminAuthModal')">&times;</button>
+      <h3 style="margin-bottom: 1rem;">Admin Authentication</h3>
+      <div class="form-group">
+        <label>Enter Passcode:</label>
+        <input type="password" id="adminPassInput" placeholder="Passcode">
+      </div>
+      <button class="btn-action" style="width: 100%;" onclick="verifyAdminPass()">Login</button>
+    </div>
+  </div>
+
+  <!-- ADMIN DASHBOARD MODAL -->
+  <div class="modal-overlay" id="adminDashModal">
+    <div class="glass modal-body">
+      <button class="modal-close" onclick="closeModal('adminDashModal')">&times;</button>
+      <h2 style="margin-bottom: 1rem;">Admin Control Dashboard</h2>
+
+      <div class="admin-tab-btns">
+        <button class="admin-tab-btn active" onclick="switchAdminTab('tabAnnounce')">Announcements</button>
+        <button class="admin-tab-btn" onclick="switchAdminTab('tabNotes')">Notes</button>
+        <button class="admin-tab-btn" onclick="switchAdminTab('tabChatMod')">Chat Moderation</button>
+        <button class="admin-tab-btn" onclick="switchAdminTab('tabTimeouts')">Timeouts</button>
+      </div>
+
+      <!-- TAB: ANNOUNCEMENTS -->
+      <div id="tabAnnounce" class="admin-section-content active">
+        <h4>Add / Edit Announcement</h4>
+        <input type="hidden" id="adminAnnounceId">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="adminAnnounceTitle">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="adminAnnounceDesc" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label><input type="checkbox" id="adminAnnouncePin"> Pin to Top</label>
+        </div>
+        <button class="btn-action" onclick="saveAnnouncement()">Save Announcement</button>
+      </div>
+
+      <!-- TAB: NOTES -->
+      <div id="tabNotes" class="admin-section-content">
+        <h4>Add / Edit Note</h4>
+        <input type="hidden" id="adminNoteId">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="adminNoteTitle">
+        </div>
+        <div class="form-group">
+          <label>Subject</label>
+          <input type="text" id="adminNoteSubject">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="adminNoteDesc">
+        </div>
+        <div class="form-group">
+          <label>Content</label>
+          <textarea id="adminNoteContent" rows="4"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Optional PDF/File URL</label>
+          <input type="text" id="adminNoteUrl" placeholder="https://...">
+        </div>
+        <button class="btn-action" onclick="saveNote()">Save Note</button>
+      </div>
+
+      <!-- TAB: CHAT MODERATION -->
+      <div id="tabChatMod" class="admin-section-content">
+        <h4>Recent Messages (Moderation)</h4>
+        <div id="adminChatList" style="max-height: 300px; overflow-y: auto; margin-top: 1rem;">
+          <!-- Dynamic load -->
+        </div>
+      </div>
+
+      <!-- TAB: TIMEOUTS -->
+      <div id="tabTimeouts" class="admin-section-content">
+        <h4>Timeout Student</h4>
+        <div class="form-group">
+          <label>Student Name</label>
+          <input type="text" id="timeoutStudentName" placeholder="Exact display name">
+        </div>
+        <div class="form-group">
+          <label>Duration</label>
+          <select id="timeoutDuration">
+            <option value="5">5 Minutes</option>
+            <option value="10">10 Minutes</option>
+            <option value="30">30 Minutes</option>
+            <option value="60">1 Hour</option>
+            <option value="1440">1 Day</option>
+          </select>
+        </div>
+        <button class="btn-action" onclick="applyTimeout()">Apply Timeout</button>
+        
+        <h4 style="margin-top: 2rem;">Active Timeouts</h4>
+        <div id="activeTimeoutsList" style="margin-top: 0.5rem;">
+          <!-- Dynamic Load -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    /* 
+      SECURITY DISCLAIMER:
+      Client-side authentication against a hardcoded passcode inside GitHub Pages frontend 
+      code is fundamentally insecure for absolute access restriction. Anyone inspecting source 
+      code can read the password. For enterprise grade security, configure backend authentication 
+      and Supabase Row Level Security (RLS) linked to Supabase Auth roles.
+    */
+
+    // SUPABASE & LIVEPEER CONFIGURATION
+    const SUPABASE_URL = "https://tbkapugokvlxpzpyklip.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_yb7m61KRyHSyFCQr64nIAA_ZE7XQMOI";
+    const LIVEPEER_HLS_URL = "https://livepeercdn.studio/hls/b91557omqedsswdu/index.m3u8";
+    const ADMIN_PASS = "1315";
+
+    // Initialize Supabase Client
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+    // Global State
+    let isAdmin = false;
+    let rawAnnouncements = [];
+    let rawNotes = [];
+    let rawChat = [];
+
+    // INITIALIZATION
+    window.addEventListener('DOMContentLoaded', () => {
+      initVideoPlayer();
+      fetchAnnouncements();
+      fetchNotes();
+      fetchChat();
+      fetchVotes();
+      subscribeRealtime();
+    });
+
+    /* ================= LIVEPEER VIDEO PLAYER ================= */
+    function initVideoPlayer() {
+      const video = document.getElementById('videoPlayer');
+      const badge = document.getElementById('statusBadge');
+      const msg = document.getElementById('streamMessage');
+
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true
+        });
+
+        hls.loadSource(LIVEPEER_HLS_URL);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          badge.className = "status-badge status-live";
+          badge.innerHTML = `<i class="fa-solid fa-circle"></i> 🔴 LIVE NOW`;
+          msg.textContent = "Class streaming live.";
+          video.playbackRate = 1.0;
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            badge.className = "status-badge status-offline";
+            badge.innerHTML = `<i class="fa-solid fa-circle"></i> STREAM OFFLINE / CLASS ENDED`;
+            msg.textContent = "Live Class Ended. Notes and materials remain available below.";
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = LIVEPEER_HLS_URL;
+        badge.className = "status-badge status-live";
+        badge.innerHTML = `<i class="fa-solid fa-circle"></i> 🔴 LIVE NOW`;
+      }
+      
+      // Enforce 1.0 playback speed constraint
+      video.addEventListener('ratechange', () => {
+        if (video.playbackRate !== 1.0) {
+          video.playbackRate = 1.0;
+        }
+      });
+    }
+
+    /* ================= REALTIME SUBSCRIPTIONS ================= */
+    function subscribeRealtime() {
+      supabaseClient
+        .channel('public-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, () => fetchChat())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => fetchAnnouncements())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => fetchNotes())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => fetchVotes())
+        .subscribe();
+    }
+
+    /* ================= ANNOUNCEMENTS ================= */
+    async function fetchAnnouncements() {
+      const { data, error } = await supabaseClient
+        .from('announcements')
+        .select('*')
+        .order('is_pinned', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) return console.error(error);
+      rawAnnouncements = data || [];
+      renderAnnouncements(rawAnnouncements);
+    }
+
+    function renderAnnouncements(items) {
+      const container = document.getElementById('announcementsContainer');
+      container.innerHTML = '';
+
+      items.forEach(item => {
+        const dateStr = new Date(item.created_at).toLocaleString();
+        const card = document.createElement('div');
+        card.className = `glass card ${item.is_pinned ? 'card-pinned' : ''}`;
+        card.innerHTML = `
+          ${item.is_pinned ? '<div class="pin-badge"><i class="fa-solid fa-thumbtack"></i> Pinned</div>' : ''}
+          <div>
+            <div class="card-title">${escapeHTML(item.title)}</div>
+            <div class="card-meta">${dateStr}</div>
+            <p>${escapeHTML(item.description)}</p>
+          </div>
+          ${isAdmin ? `
+            <div style="margin-top: 1rem; display:flex; gap:0.5rem;">
+              <button class="btn-action" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;" onclick="editAnnouncement('${item.id}')">Edit</button>
+              <button class="btn-danger-sm" onclick="deleteAnnouncement('${item.id}')">Delete</button>
+              <button class="btn-action" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; background:#f59e0b;" onclick="togglePinAnnouncement('${item.id}', ${!item.is_pinned})">${item.is_pinned ? 'Unpin' : 'Pin'}</button>
+            </div>
+          ` : ''}
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    /* ================= NOTES ================= */
+    async function fetchNotes() {
+      const { data, error } = await supabaseClient
+        .from('notes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) return console.error(error);
+      rawNotes = data || [];
+      renderNotes(rawNotes);
+    }
+
+    function renderNotes(items) {
+      const container = document.getElementById('notesContainer');
+      container.innerHTML = '';
+
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'glass card';
+        card.innerHTML = `
+          <div>
+            <span style="font-size:0.75rem; background:rgba(124, 58, 237, 0.3); padding: 2px 8px; border-radius:10px; color:#a78bfa;">${escapeHTML(item.subject)}</span>
+            <div class="card-title" style="margin-top:0.5rem;">${escapeHTML(item.title)}</div>
+            <p style="font-size:0.9rem; color:var(--text-sub); margin-bottom: 0.5rem;">${escapeHTML(item.description)}</p>
+            <p style="font-size:0.95rem;">${escapeHTML(item.content)}</p>
+          </div>
+          <div style="margin-top: 1rem;">
+            ${item.file_url ? `<a href="${escapeHTML(item.file_url)}" target="_blank" class="btn-action" style="padding:0.4rem 0.8rem; font-size:0.85rem;"><i class="fa-solid fa-file-pdf"></i> Download PDF</a>` : ''}
+            ${isAdmin ? `
+              <div style="margin-top: 0.5rem; display:flex; gap:0.5rem;">
+                <button class="btn-action" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;" onclick="editNote('${item.id}')">Edit</button>
+                <button class="btn-danger-sm" onclick="deleteNote('${item.id}')">Delete</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    /* ================= CHAT SYSTEM & TIMEOUTS ================= */
+    async function fetchChat() {
+      const { data, error } = await supabaseClient
+        .from('chat_messages')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) return console.error(error);
+      rawChat = data || [];
+      renderChat(rawChat);
+      if(isAdmin) renderAdminChat(rawChat);
+    }
+
+    function renderChat(items) {
+      const container = document.getElementById('chatMessages');
+      container.innerHTML = '';
+
+      items.forEach(msg => {
+        const dateStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        bubble.innerHTML = `
+          <div class="chat-header">
+            <span class="chat-author">${escapeHTML(msg.name)}</span>
+            <span>${dateStr}</span>
+          </div>
+          <div>${escapeHTML(msg.message)}</div>
+        `;
+        container.appendChild(bubble);
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function sendChatMessage() {
+      const nameInput = document.getElementById('chatName');
+      const msgInput = document.getElementById('chatMsg');
+
+      const name = nameInput.value.trim();
+      const message = msgInput.value.trim();
+
+      if (!name || !message) {
+        alert("Please enter both your name and message.");
+        return;
+      }
+
+      // Check for Timeout
+      const { data: timeouts } = await supabaseClient
+        .from('chat_timeouts')
+        .select('*')
+        .eq('student_name', name)
+        .gt('expires_at', new Date().toISOString());
+
+      if (timeouts && timeouts.length > 0) {
+        alert("You are temporarily blocked from sending messages.");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from('chat_messages')
+        .insert([{ name, message }]);
+
+      if (error) {
+        alert("Failed to send message.");
+        console.error(error);
+      } else {
+        msgInput.value = '';
+      }
+    }
+
+    /* ================= LIKE / DISLIKE SYSTEM ================= */
+    async function fetchVotes() {
+      const { data, error } = await supabaseClient
+        .from('comments')
+        .select('vote_type');
+
+      if (!error && data) {
+        const likes = data.filter(d => d.vote_type === 'like').length;
+        const dislikes = data.filter(d => d.vote_type === 'dislike').length;
+        document.getElementById('likeCount').textContent = likes;
+        document.getElementById('dislikeCount').textContent = dislikes;
+      }
+    }
+
+    async function handleVote(type) {
+      const hasVoted = localStorage.getItem('has_voted_livepeer');
+      if (hasVoted) {
+        alert("You have already recorded your reaction.");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from('comments')
+        .insert([{ vote_type: type }]);
+
+      if (!error) {
+        localStorage.setItem('has_voted_livepeer', 'true');
+        fetchVotes();
+      }
+    }
+
+    /* ================= SEARCH FUNCTIONALITY ================= */
+    function handleSearch() {
+      const query = document.getElementById('globalSearch').value.toLowerCase();
+
+      const filteredAnnounce = rawAnnouncements.filter(a => 
+        a.title.toLowerCase().includes(query) || a.description.toLowerCase().includes(query)
+      );
+      renderAnnouncements(filteredAnnounce);
+
+      const filteredNotes = rawNotes.filter(n => 
+        n.title.toLowerCase().includes(query) || 
+        n.subject.toLowerCase().includes(query) || 
+        n.description.toLowerCase().includes(query) ||
+        n.content.toLowerCase().includes(query)
+      );
+      renderNotes(filteredNotes);
+
+      const filteredChat = rawChat.filter(c => 
+        c.name.toLowerCase().includes(query) || c.message.toLowerCase().includes(query)
+      );
+      renderChat(filteredChat);
+    }
+
+    /* ================= ADMIN DASHBOARD FUNCTIONS ================= */
+    function openAdminAuthModal() {
+      if (isAdmin) {
+        openModal('adminDashModal');
+      } else {
+        openModal('adminAuthModal');
+      }
+    }
+
+    function verifyAdminPass() {
+      const pass = document.getElementById('adminPassInput').value;
+      if (pass === ADMIN_PASS) {
+        isAdmin = true;
+        closeModal('adminAuthModal');
+        openModal('adminDashModal');
+        renderAnnouncements(rawAnnouncements);
+        renderNotes(rawNotes);
+        renderAdminChat(rawChat);
+        fetchActiveTimeouts();
+      } else {
+        alert("Incorrect passcode.");
+      }
+    }
+
+    function switchAdminTab(tabId) {
+      document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.admin-section-content').forEach(c => c.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    // Admin: Announcement Management
+    async function saveAnnouncement() {
+      const id = document.getElementById('adminAnnounceId').value;
+      const title = document.getElementById('adminAnnounceTitle').value;
+      const description = document.getElementById('adminAnnounceDesc').value;
+      const is_pinned = document.getElementById('adminAnnouncePin').checked;
+
+      if (id) {
+        await supabaseClient.from('announcements').update({ title, description, is_pinned }).eq('id', id);
+      } else {
+        await supabaseClient.from('announcements').insert([{ title, description, is_pinned }]);
+      }
+
+      document.getElementById('adminAnnounceId').value = '';
+      document.getElementById('adminAnnounceTitle').value = '';
+      document.getElementById('adminAnnounceDesc').value = '';
+      document.getElementById('adminAnnouncePin').checked = false;
+      fetchAnnouncements();
+    }
+
+    function editAnnouncement(id) {
+      const item = rawAnnouncements.find(a => a.id == id);
+      if (!item) return;
+      openModal('adminDashModal');
+      switchAdminTab('tabAnnounce');
+      document.getElementById('adminAnnounceId').value = item.id;
+      document.getElementById('adminAnnounceTitle').value = item.title;
+      document.getElementById('adminAnnounceDesc').value = item.description;
+      document.getElementById('adminAnnouncePin').checked = item.is_pinned;
+    }
+
+    async function deleteAnnouncement(id) {
+      if (confirm("Delete this announcement?")) {
+        await supabaseClient.from('announcements').delete().eq('id', id);
+        fetchAnnouncements();
+      }
+    }
+
+    async function togglePinAnnouncement(id, state) {
+      await supabaseClient.from('announcements').update({ is_pinned: state }).eq('id', id);
+      fetchAnnouncements();
+    }
+
+    // Admin: Notes Management
+    async function saveNote() {
+      const id = document.getElementById('adminNoteId').value;
+      const title = document.getElementById('adminNoteTitle').value;
+      const subject = document.getElementById('adminNoteSubject').value;
+      const description = document.getElementById('adminNoteDesc').value;
+      const content = document.getElementById('adminNoteContent').value;
+      const file_url = document.getElementById('adminNoteUrl').value;
+
+      if (id) {
+        await supabaseClient.from('notes').update({ title, subject, description, content, file_url }).eq('id', id);
+      } else {
+        await supabaseClient.from('notes').insert([{ title, subject, description, content, file_url }]);
+      }
+
+      document.getElementById('adminNoteId').value = '';
+      document.getElementById('adminNoteTitle').value = '';
+      document.getElementById('adminNoteSubject').value = '';
+      document.getElementById('adminNoteDesc').value = '';
+      document.getElementById('adminNoteContent').value = '';
+      document.getElementById('adminNoteUrl').value = '';
+      fetchNotes();
+    }
+
+    function editNote(id) {
+      const item = rawNotes.find(n => n.id == id);
+      if (!item) return;
+      openModal('adminDashModal');
+      switchAdminTab('tabNotes');
+      document.getElementById('adminNoteId').value = item.id;
+      document.getElementById('adminNoteTitle').value = item.title;
+      document.getElementById('adminNoteSubject').value = item.subject;
+      document.getElementById('adminNoteDesc').value = item.description;
+      document.getElementById('adminNoteContent').value = item.content;
+      document.getElementById('adminNoteUrl').value = item.file_url || '';
+    }
+
+    async function deleteNote(id) {
+      if (confirm("Delete this note?")) {
+        await supabaseClient.from('notes').delete().eq('id', id);
+        fetchNotes();
+      }
+    }
+
+    // Admin: Chat Moderation
+    function renderAdminChat(items) {
+      const container = document.getElementById('adminChatList');
+      container.innerHTML = '';
+      items.slice().reverse().forEach(msg => {
+        const div = document.createElement('div');
+        div.style.cssText = "display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px;";
+        div.innerHTML = `
+          <div>
+            <strong>${escapeHTML(msg.name)}:</strong> ${escapeHTML(msg.message)}
+          </div>
+          <button class="btn-danger-sm" onclick="deleteChatMessage('${msg.id}')">Delete</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function deleteChatMessage(id) {
+      await supabaseClient.from('chat_messages').delete().eq('id', id);
+      fetchChat();
+    }
+
+    // Admin: Timeouts
+    async function applyTimeout() {
+      const name = document.getElementById('timeoutStudentName').value.trim();
+      const minutes = parseInt(document.getElementById('timeoutDuration').value);
+
+      if (!name) return alert("Enter student name.");
+
+      const expiresAt = new Date(Date.now() + minutes * 60000).toISOString();
+
+      const { error } = await supabaseClient
+        .from('chat_timeouts')
+        .insert([{ student_name: name, expires_at: expiresAt }]);
+
+      if (error) {
+        alert("Failed to set timeout.");
+      } else {
+        alert(`Timeout applied to ${name} for ${minutes} minutes.`);
+        document.getElementById('timeoutStudentName').value = '';
+        fetchActiveTimeouts();
+      }
+    }
+
+    async function fetchActiveTimeouts() {
+      const container = document.getElementById('activeTimeoutsList');
+      const { data } = await supabaseClient
+        .from('chat_timeouts')
+        .select('*')
+        .gt('expires_at', new Date().toISOString());
+
+      container.innerHTML = '';
+      (data || []).forEach(t => {
+        const exp = new Date(t.expires_at).toLocaleTimeString();
+        const div = document.createElement('div');
+        div.style.cssText = "display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; background:rgba(0,0,0,0.2); padding:0.4rem;";
+        div.innerHTML = `
+          <span>${escapeHTML(t.student_name)} (Expires: ${exp})</span>
+          <button class="btn-danger-sm" onclick="removeTimeout('${t.id}')">Remove</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function removeTimeout(id) {
+      await supabaseClient.from('chat_timeouts').delete().eq('id', id);
+      fetchActiveTimeouts();
+    }
+
+    /* ================= UTILITY FUNCTIONS ================= */
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"']/g, match => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[match]));
+    }
+  </script>
+</body>
+</html>
